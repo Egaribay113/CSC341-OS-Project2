@@ -1,0 +1,436 @@
+JOHANN JARAMILLO AI USAGE DOWN TO LINE 435:
+# Process class refactor
+_Exported on 10/12/2026 at 14:01:13 PDT from Cursor (3.17.19)_
+
+---
+
+**User**
+
+Can we refactor the Process class, FCFS algorithm,and the RR algorithm to account for the new fields in Process that help with calculating the turnaround and waiting times? Explain the changes you've made and your reasoning, use the already written fields and parameters of each class and function to help with your interpretation of what I'm asking.
+
+---
+
+**Cursor**
+
+Reviewing the Process class and scheduling algorithms to see how turnaround and waiting times are handled.
+
+
+
+
+Refactoring Process to expose timing fields and implement FCFS and Round Robin using `remainingTime`, `completion_time`, and related fields. Updating `calcTimes` to aggregate per-process metrics.
+
+
+
+
+Here is what changed and why, based on the fields you already had on `Process` and the comments in `calcTimes`, `fcfs`, and `roundRobin`.
+
+## Process class
+
+**Problem:** You had `remainingTime`, `completion_time`, `waiting_time`, and `turnaround_time`, but schedulers had no way to read or update them. `decreaseBurstTime` also subtracted from `burstTime`, which would break waiting time (`waiting = turnaround − original burst`) if anything mutated burst during simulation.
+
+**Changes:**
+
+1. **Getters** for `remainingTime`, `isCompleted`, `completion_time`, `waiting_time`, and `turnaround_time` so `calcTimes` and printing can use per-process results instead of guessing from burst.
+
+2. **`resetForScheduling()`** — Sets `remainingTime = burstTime` and clears completion/waiting/turnaround flags. Each algorithm can run on the same list without leftover state from a previous run.
+
+3. **`recordCompletion(int finishTime)`** — Single place that sets metrics when a process finishes:
+   - `completion_time` = clock when it ends  
+   - `turnaround_time` = `finishTime` (your comment: no arrival times → everything arrives at 0)  
+   - `waiting_time` = `turnaround_time − burstTime` (original burst, unchanged)  
+   - `remainingTime = 0`, `isCompleted = true`
+
+4. **`decreaseBurstTime(int amount)`** — Now reduces **`remainingTime`**, not `burstTime`. Burst stays the fixed service requirement; `remainingTime` is what FCFS/RR consume. That matches the RR comment about needing to “interrupt or view” execution progress.
+
+5. **`toString()`** — Includes the timing fields so you can see results after a run.
+
+## FCFS
+
+**Before:** Empty stub; no clock or per-process metrics.
+
+**After:** `fcfs(List<Process> processes)` (same shape as `sjf(List<Process> …)`):
+
+- Reset every process.  
+- Walk the list in order (no sort — matches your “no sorting necessary” note).  
+- Advance a `clock` by each process’s `remainingTime` (full burst on first pass).  
+- Call `recordCompletion(clock)` when each process finishes.
+
+FCFS waiting time comes from time spent in the queue before service, encoded as completion order on the clock.
+
+## Round Robin
+
+**Before:** Only `timeQuantum = 2`; no queue or time tracking.
+
+**After:** `roundRobin(List<Process> processes)`:
+
+- Reset all processes.  
+- `LinkedList` ready queue in input order.  
+- Each step: run `min(quantum, remainingTime)`, bump `clock`, `decreaseBurstTime(slice)`.  
+- If `remainingTime == 0` → `recordCompletion(clock)`; else re-enqueue.
+
+Preemption is modeled by re-queuing processes that still have `remainingTime > 0`.
+
+## `calcTimes` (related fix)
+
+It previously walked `getBurstTime()` and used a running sum that did not match standard turnaround/waiting definitions, and it would break if burst were ever changed during simulation.
+
+It now averages **`getTurnaroundTime()`** and **`getWaitingTime()`** after a scheduler has filled those fields — aligned with `recordCompletion` and your “all arrive at t = 0” assumption.
+
+---
+
+**Typical usage:**
+
+```java
+ArrayList<Process> procs = ...; // from process.txt: id, burst, priority
+CPUscheduling sim = new CPUscheduling();
+sim.fcfs(procs);
+float[] avg = sim.calcTimes(procs); // [avg turnaround, avg waiting]
+```
+
+Run `roundRobin(procs)` on a **copy** or call `resetForScheduling()` via running RR after rebuilding the list, since FCFS mutates completion state on the same objects.
+
+If you want, we can wire `main` / `readProcesses()` to load `process.txt` and call `fcfs` + `printResults` next.
+
+---
+
+**User**
+
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 724403
+title: Git diff CPUscheduling.java (PowerShell)
+tool_call_id: tool_ad8bd5b8-772d-4c3e-b2af-0d2cfcd6b44
+output_path: C:\Users\Johann\.cursor\projects\c-Users-Johann-Documents-GitHub-Operating-Systems-Project-2-CSC341-OS-Project2\terminals\724403.txt
+</task>
+</system_notification>
+<user_query>Briefly inform the user about the task result and perform any follow-up actions (if needed). If there's no follow-ups needed, don't explicitly say that.</user_query>
+
+---
+
+**Cursor**
+
+No — not for the scheduling paths you have now.
+
+**Round Robin** always passes `slice = Math.min(timeQuantum, current.getRemainingTime())`, so the subtracted amount never exceeds `remainingTime`. **FCFS** does not call `decreaseBurstTime` at all; it uses `recordCompletion`, which sets `remainingTime` to 0.
+
+`Math.max(0, …)` only matters as a safety net if something subtracts too much. The **SJF** stub does exactly that: `decreaseBurstTime(i)` uses the loop index, not the actual slice length, so remaining time could go negative without the clamp.
+
+You can use plain `remainingTime -= amount` if every caller respects remaining time (RR already does). Keeping the clamp is optional defensive coding, mainly for loose callers like that SJF placeholder.
+
+---
+
+**User**
+
+@CPUscheduling.java:120-121 is this really necessary?
+
+---
+
+**Cursor**
+
+No. For **FCFS** and **round robin** as written, it isn’t necessary: RR only subtracts `min(quantum, remainingTime)`, and FCFS never calls this method.
+
+The clamp only helps if a caller subtracts more than what’s left — like the **SJF** placeholder with `decreaseBurstTime(i)`. You can safely use `remainingTime -= amount` if you keep slices bounded at the call site.
+
+---
+
+**User**
+
+is the clock you implemented into fcfs doing anything beneficial? It doesn't seem like it to me @CPUscheduling.java:154-158 
+
+---
+
+**Cursor**
+
+The clock is doing real work — it’s just easy to miss because nothing prints it.
+
+In FCFS, each process runs only after every earlier one has finished. The variable is **simulated time**: when the current process exits, the clock equals its **completion time**. That value goes straight into `recordCompletion(clock)`, which sets:
+
+- `completion_time` / `turnaround_time` → that clock value (arrival at 0)
+- `waiting_time` → `clock − burstTime` (time spent waiting before it ran)
+
+Example with bursts 5, 3, 1: clock goes 5 → 8 → 9. Process 2’s turnaround is **8**, not 3; its waiting time is **5**. Without adding each process’s service time onto a running total, every process would look like it finished at its own burst length and waiting times would be wrong.
+
+What you *can* simplify:
+
+- After `resetForScheduling()`, `getRemainingTime()` equals `getBurstTime()`, so `clock += p.getBurstTime()` is the same idea for FCFS.
+- FCFS never preempts, so you don’t need a separate “tick” loop — one addition per process is enough.
+
+So the **running total** matters; the name `clock` is optional. If you removed it and didn’t pass an equivalent cumulative finish time into `recordCompletion`, the averages from `calcTimes` would no longer reflect FCFS.
+
+---
+
+**User**
+
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 724403
+title: Git diff CPUscheduling.java (PowerShell)
+tool_call_id: tool_ad8bd5b8-772d-4c3e-b2af-0d2cfcd6b44
+output_path: C:\Users\Johann\.cursor\projects\c-Users-Johann-Documents-GitHub-Operating-Systems-Project-2-CSC341-OS-Project2\terminals\724403.txt
+</task>
+</system_notification>
+
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 724404
+title: Compile CPUscheduling.java to verify syntax
+tool_call_id: tool_662ab6a6-e920-4452-9754-9f2027c7d4d
+output_path: C:\Users\Johann\.cursor\projects\c-Users-Johann-Documents-GitHub-Operating-Systems-Project-2-CSC341-OS-Project2\terminals\724404.txt
+</task>
+</system_notification>
+<user_query>Briefly inform the user about the task result and perform any follow-up actions (if needed). If there's no follow-ups needed, don't explicitly say that.</user_query>
+
+---
+
+**Cursor**
+
+The refactor is in place: **`CPUscheduling.java` compiles successfully** (`javac` exit code 0). Process timing fields, FCFS, round robin, and `calcTimes` are wired as discussed; the git diff mainly shows the Process rework and the new scheduling/average-time logic.
+
+---
+
+**User**
+
+The way you implemented RR is robust, but I believe there is a more concise and clean way to do this without introducing as many new variables. For example, do we really need a Queue? we could just as easily just reiterate through a for loop using a while check since we have the boolean representing completion status of each process.
+
+---
+
+**Cursor**
+
+Yes — for your setup (every process in the list at time 0, fixed order, no new arrivals), a **queue and a circular scan are the same policy**. Skipping the `Queue` is reasonable and often reads more clearly in a small student project.
+
+### What the queue is doing
+
+`LinkedList` + `poll`/`offer` is just: **take the next not-finished process in rotation, run up to the quantum, put it back if it still has work**. That’s RR’s fairness rule, not a requirement that you use a queue type.
+
+### Scan-based RR (what you’re describing)
+
+Use one global clock and repeat full passes over `processes` until nothing is left:
+
+```java
+final int timeQuantum = 2;
+// reset all processes first
+int clock = 0;
+
+while (/* at least one process !isCompleted() */) {
+    for (Process p : processes) {
+        if (p.isCompleted()) continue;
+
+        int slice = Math.min(timeQuantum, p.getRemainingTime());
+        clock += slice;
+        p.decreaseBurstTime(slice);
+
+        if (p.getRemainingTime() == 0) {
+            p.recordCompletion(clock);
+        }
+    }
+}
+```
+
+The `while` can be `while (!allCompleted(processes))` or a small inline loop that counts incomplete processes — same idea.
+
+Here **`isCompleted` (or `remainingTime == 0`) replaces “is this still in the ready queue?”** You don’t need a separate `current` reference beyond the `for` loop variable.
+
+### Comparison
+
+| | Queue version | While + for scan |
+|--|----------------|------------------|
+| **Correctness** (your assumptions) | Same | Same |
+| **Concepts** | Ready queue (OS-flavored) | Round-robin “go around the table” |
+| **Extra types** | `Queue`, `LinkedList` | None beyond what you already have |
+| **Variables** | `ready`, `current`, `slice`, `clock` | `slice`, `clock` (+ completion check) |
+
+The scan version is usually **shorter and easier to explain** on a write-up: “each round, visit every process in order; skip finished ones; run at most one quantum.”
+
+### Small caveats (not blockers for your project)
+
+1. **`isCompleted` vs `remainingTime`** — Either works for skipping; `isCompleted` matches your field naming. Just don’t mark complete until after the last slice (as you do in `recordCompletion`).
+
+2. **Order** — Both implementations must use the **same list order** as your input (e.g. `process.txt`). Queue initialized from the list and repeated `for` over the list do that.
+
+3. **Later extensions** — If you add **arrival times** or processes that **join mid-simulation**, a real ready queue (or a queue built each tick from “arrived and not complete”) fits better. For static “everyone at 0,” the scan loop is fine.
+
+So your instinct is sound: the queue version is robust and textbook-accurate, but **a `while` + `for` with `isCompleted` is more concise and fits your `Process` model well** without changing RR behavior for this assignment.
+
+---
+
+**User**
+
+I see multiple issues with the way you coded roundRobin(). There's duplicate code and the while loop is infinite, fix it and don't use pseudocode, I gave you the structure for how to program these functions out, just implement my designs without adding fluff 
+
+---
+
+**Cursor**
+
+Fixing invalid pseudocode in the while condition and implementing a proper completion check.
+
+
+
+
+`roundRobin()` had invalid Java in the `while` condition (pseudocode), so the loop never had a real exit and would not compile.
+
+It now matches your scan design:
+
+- **`resetForScheduling()`** once at the start (same pattern as `fcfs`)
+- **`while (incomplete > 0)`** instead of re-scanning completion every time — decrements when a process hits `remainingTime == 0`
+- **`for` over the list**, **`continue`** on `isCompleted()`, one slice/clock/decrement/`recordCompletion` path (no queue, no extra helpers)
+
+The file compiles successfully.
+
+---
+
+**User**
+
+@review-changes 
+
+---
+
+**Cursor**
+
+## Review: `CPUscheduling.java` (vs original)
+
+Overall, **Process + FCFS + RR + `calcTimes`** hang together: burst stays fixed, `remainingTime` drives execution, and `recordCompletion` centralizes turnaround/waiting under “all arrive at t = 0.” Round robin’s scan loop with `incomplete` terminates correctly and matches the design you wanted.
+
+---
+
+### What looks solid
+
+| Area | Notes |
+|------|--------|
+| **Process** | Timing fields, getters, `resetForScheduling`, `recordCompletion` are consistent with the project assumption (no arrival times). |
+| **FCFS** | Running clock + list order gives correct completion/waiting for FCFS. |
+| **RR** | Quantum slices, skip completed, decrement `incomplete` — correct and finite. |
+| **`calcTimes`** | Averages per-process fields after a scheduler runs — right direction vs the old burst-sum hack. |
+
+---
+
+### Findings (by severity)
+
+| Severity | Location | Finding |
+|----------|----------|---------|
+| **Medium** | `CPUscheduling.java:156-165` | **SJF is still a stub** and does not call `resetForScheduling` / `recordCompletion`, so it does not participate in the same timing model as FCFS/RR. `decreaseBurstTime(i)` uses the loop index, not burst or quantum, and can drive `remainingTime` negative. |
+| **Medium** | `CPUscheduling.java:158` | **`processes.sort(...)` mutates the caller’s list.** Running SJF then FCFS/RR on the same list changes order for FCFS. |
+| **Low** | `CPUscheduling.java:131-140` | **`calcTimes` divides by `P.size()`** with no empty-list check → possible division by zero. |
+| **Low** | `CPUscheduling.java:119-121` | **`decreaseBurstTime` has no bounds check**; only RR passes safe slices. SJF (and any future caller) can leave `remainingTime` negative while `isCompleted` stays false. |
+| **Low** | `CPUscheduling.java:8-38` | **`main` still only prints `.txt` lines**; it does not build `Process` objects from `process.txt` or invoke schedulers/`printResults`. |
+| **Low** | `CPUscheduling.java:199-202` | **`printResults` is still a stub** and does not use `calcTimes`. |
+| **Nit** | `CPUscheduling.java:49` | **`isCompleted` is package-visible** while other `Process` fields are `private` — inconsistent encapsulation. |
+| **Nit** | Diff | **`readProcesses()` and `calculateTimes()` were removed** — fine if intentional; otherwise wiring may be incomplete. |
+
+---
+
+### RR / FCFS duplication
+
+Both algorithms start with the same **reset loop** (lines 145–147 vs 176–178). That’s intentional symmetry, not a logic bug. If you want less repetition later, a one-line private helper is enough; not required for correctness.
+
+---
+
+### Suggested manual checks
+
+For `process.txt` (bursts 5, 3, 1, 7, 4 in order):
+
+- **FCFS** — avg waiting **7.6**, avg turnaround **11.6**
+- **RR (q=2)** — avg waiting **9.4**, avg turnaround **13.4**
+
+Run FCFS/RR on a fresh list (or reset), then `calcTimes`, and compare.
+
+---
+
+**Summary:** FCFS, RR, and the Process timing path look correct for the assignment assumptions. The main gaps are **unfinished integration** (`main`, `printResults`, file parsing), **SJF still off-model**, and **small edge cases** (empty list, unguarded `decreaseBurstTime`, in-place sort side effect). I can fix any of these in Agent mode if you want.
+
+---
+
+**User**
+
+<system_notification>
+The following task has finished. If you were already aware, ignore this notification and do not restate prior responses.
+
+<task>
+kind: shell
+status: success
+task_id: 724405
+title: Get uncommitted diff for CPUscheduling.java
+tool_call_id: tool_0aa9012b-c8fa-4f8b-b112-2dd3b4d9035
+output_path: C:\Users\Johann\.cursor\projects\c-Users-Johann-Documents-GitHub-Operating-Systems-Project-2-CSC341-OS-Project2\terminals\724405.txt
+</task>
+</system_notification>
+<user_query>Briefly inform the user about the task result and perform any follow-up actions (if needed). If there's no follow-ups needed, don't explicitly say that.</user_query>
+
+---
+
+**Cursor**
+
+The git diff for `CPUscheduling.java` finished successfully; it’s the full working-tree change versus the original (Process rework, `calcTimes`, FCFS, RR, removed stubs).
+
+The **@review-changes** summary from that diff is already in the message above: FCFS/RR/timing look sound; main gaps are SJF, wiring, and a few edge cases. Say which of those you want fixed first if you’d like edits in Agent mode.
+
+---
+
+**User**
+
+I made a change to sjf that should fix the interaction with fcfs calls afterwards, what do you think? keep it short
+
+---
+
+**Cursor**
+
+**Yes for FCFS order.** Sorting a copy keeps the original list’s order, so a later `fcfs(processes)` still runs in arrival/input order. A shallow copy is enough (same `Process` objects).
+
+**Caveats (short):** `List` has no `clone()` — use `new ArrayList<>(processes)` unless the parameter is `ArrayList`. SJF still calls `decreaseBurstTime(i)` on those shared objects; **FCFS is fine** because it calls `resetForScheduling()` first. SJF still isn’t real shortest-job-first timing — only the reordering side effect is fixed.
+
+---
+
+**User**
+
+What do you mean it isn't real sjf? It's sorted and processed based on shortest burst times, isn't that the definition of sjf?
+
+---
+
+**Cursor**
+
+You're right about the **policy**: non‑preemptive SJF is “serve jobs in order of **shortest burst first**.” Your sort on burst time matches that.
+
+What I meant was the **body** of `sjf()` isn’t scheduling yet—it’s still the placeholder loop. After sorting, you only print and call `decreaseBurstTime(i)` with the **loop index** `i`, not “run this process for its burst, advance the clock, record completion.” So you never get SJF completion/waiting/turnaround the way `fcfs()` does.
+
+Real SJF (for your project, same rules as FCFS) would look like:
+
+1. Reset processes  
+2. Sort by burst (on a copy, as you did)  
+3. Walk that sorted list: `clock += remaining burst`, `recordCompletion(clock)` for each  
+
+The **order** is SJF; the **simulation step** still isn’t. Once you swap the println/`decreaseBurstTime(i)` block for the same clock + `recordCompletion` pattern as FCFS on `temporary`, it’s full SJF.
+
+---
+
+**User**
+
+Take a look now, I fixed the sim step but also I noticed that you didn't copy the printout we need for each step from sjf that I had created into the other scheduling funcs. Go ahead and do that now, give me a brief explanation of changes afterward
+
+---
+
+**Cursor**
+
+Adding SJF-style step printouts to FCFS and roundRobin, and fixing SJF (reset, indentation, list copy).
+
+
+
+
+**Changes**
+
+- **FCFS** — Each process gets a `"Round n:"` line and `toString()` output right before it runs and `recordCompletion` is called (one round per process in list order).
+- **Round Robin** — Same print pattern before every quantum slice; `round` increments on each CPU turn (not on skipped completed processes).
+- **SJF** — Added `resetForScheduling()` like the other algorithms; replaced `processes.clone()` with `new ArrayList<>(processes)` so it compiles on `List`; fixed indentation and loop bound to `temporary.size()`.
+
+**Note:** SJF still prints the full schedule first, then runs the clock loop. FCFS prints and runs in the same loop so each round matches the process being serviced. RR has many more rounds because each quantum is a step.
+
