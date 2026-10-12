@@ -52,7 +52,7 @@ public class CPUscheduling {
        System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
         String algoName = scanner.nextLine().trim();   
 
-        if(algoName == "FCFS"  ) { 
+        if( algoName.equalsIgnoreCase("FCFS")) { 
             scheduler.fcfs(processes);
         }
       
