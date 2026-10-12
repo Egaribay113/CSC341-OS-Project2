@@ -1,42 +1,54 @@
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.*;
+
 
 public class CPUscheduling {
 
     public static void main(String[] args) throws IOException {
-        // Create a File object pointing to the current project directory
-        File dir = new File(".");
+      Scanner scanner = new Scanner(System.in);
+      
+      System.out.print("Enter the process file name: ");
+      String fileName = scanner.nextLine().trim();   
+      
+      File inputFile = new File(fileName);
+      
+      if(!inputFile.exists() || !inputFile.isFile()){
+        System.out.println("File not found: " + fileName);
+        return; 
+      }
+       System.out.println("====== " + fileName + " ======");
 
-        // List all .txt files in the current project directory, sort them
-        // alphabetically, and collect into a List
-        List<String> files = Arrays.stream(dir.list((d, n) -> n.endsWith(".txt"))).sorted()
-                .collect(Collectors.toList());
+        ArrayList<Process> processes = new ArrayList<>();
 
-        // Loop through each .txt file
-        for (String inputFile : files) {
-            System.out.println("====== " + inputFile + " ======");
+       try(BufferedReader reader = new BufferedReader( new FileReader(inputFile))){
+        String line; 
+        
 
-            // Open the file for reading
-            BufferedReader reader = new BufferedReader(new FileReader(inputFile));
-            String tempString = null;
+            while((line = reader.readLine()) != null ){
+                line = line.trim();
+                if(line.isEmpty()){
+                    continue;
+                }
 
-            // Read the file line by line
-            while ((tempString = reader.readLine()) != null) {
+                String[] data = line.split("\\s+");
 
-                // Remove curly braces, trim spaces, and split the line by commas
-                String[] data = tempString.replace("{", "").replace("}", "").trim().split(",");
+                int id = Integer.parseInt(data[0]);
+                int burstTime = Integer.parseInt(data[1]);
+                int priority = Integer.parseInt(data[2]);
 
-                System.out.println(tempString);
-
+                Process process = new Process(id , burstTime , priority);
+                processes.add(process);
             }
-            System.out.println(tempString);
-            // Close the file reader
-            reader.close();
+       }
+       System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
 
-        }
+       for(Process process : processes){
+        System.out.println(process);
+       }
+
     }
+
 
     public float[] calcTimes(ArrayList<Process> P) {
         //since no arrival times were given in the project description, assumes all processes arrived at t=0
