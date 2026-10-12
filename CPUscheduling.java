@@ -54,6 +54,9 @@ public class CPUscheduling {
 
         if( algoName.equalsIgnoreCase("FCFS")) { 
             scheduler.fcfs(processes);
+            float[] averages = scheduler.calcTimes(processes);
+            System.out.println("Average turnaround time : " + averages[0]);
+            System.out.println("Average waiting time : " + averages[1]);
         }
       
 
