@@ -6,7 +6,10 @@ import java.util.*;
 public class CPUscheduling {
 
     public static void main(String[] args) throws IOException {
-      Scanner scanner = new Scanner(System.in);
+     
+     CPUscheduling scheduler = new CPUscheduling(); 
+     
+        Scanner scanner = new Scanner(System.in);
       
       System.out.print("Enter the process file name: ");
       String fileName = scanner.nextLine().trim();   
@@ -41,11 +44,18 @@ public class CPUscheduling {
                 processes.add(process);
             }
        }
-       System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
-
+    
        for(Process process : processes){
-        System.out.println(process);
+            System.out.println(process);
        }
+        
+       System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
+        String algoName = scanner.nextLine().trim();   
+
+        if(algoName == "FCFS"  ) { 
+            scheduler.fcfs(processes);
+        }
+      
 
     }
 
