@@ -16,3 +16,6 @@
 - Documented AI-assisted development and scheduling decisions.
 
 ## Eric Garibay
+- Created project file, CPUScheduling class, and included necessary imports.
+- Applied required testing to ensure functionality.
+- Created/modified file reader and scanner input.
