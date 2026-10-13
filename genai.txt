@@ -434,3 +434,272 @@ Adding SJF-style step printouts to FCFS and roundRobin, and fixing SJF (reset, i
 
 **Note:** SJF still prints the full schedule first, then runs the clock loop. FCFS prints and runs in the same loop so each round matches the process being serviced. RR has many more rounds because each quantum is a step.
 
+
+======================================================================
+ETHAN HARRIS AI USAGE / CODEX CONVERSATION
+======================================================================
+
+**User**
+
+Can you create a branch for me and put everything that should be in its own file in its own file?
+
+**Codex**
+
+Inspected the project, created the `separate-process-file` branch, and moved the nested `Process` class into `Process.java`. The scheduling algorithms remained in `CPUscheduling.java` because they belong to the scheduler. Updated SJF to use `Process::getBurstTime` and verified the Java files compile.
+
+**User**
+
+Why does genai.txt print when I run the code?
+
+**Codex**
+
+The original `main` searches for every file ending in `.txt`, so it finds and prints `genai.txt`, `note.txt`, and `process.txt`. The line after the reading loop also prints `null` once per file because `readLine()` returns `null` at end-of-file.
+
+**User**
+
+I am on a separate branch than main correct?
+
+**Codex**
+
+Yes. The active branch is `separate-process-file`, which was created from `main`.
+
+**User**
+
+So I should commit the changes I’ve done so far right?
+
+**Codex**
+
+Yes, once the changes are ready. Stage the intended source/input files and avoid committing compiled `.class` files:
+
+    git add CPUscheduling.java Process.java process.txt
+    git commit -m "Separate Process into its own file"
+
+**User**
+
+Explain exactly how to change the code to ask the user for the process.txt file.
+
+**Codex**
+
+Replace the directory scan with a `Scanner` prompt, read the filename, verify the `File` exists, and read only that file with a `BufferedReader`. The user can enter `process.txt`. This prevents the program from automatically reading every `.txt` file.
+
+**User**
+
+Does the unmodified main do anything besides print the txt file?
+
+**Codex**
+
+No. It finds every `.txt` file, reads each line, creates an unused `data` array, prints the original line, prints `null` after each file, and closes the reader. It does not create processes or run a scheduling algorithm.
+
+**User**
+
+What does `.trim()` do?
+
+**Codex**
+
+`.trim()` removes whitespace from the beginning and end of a string. It does not remove spaces inside the string.
+
+**User**
+
+What does the return after printing file not found do?
+
+**Codex**
+
+The `return` exits the `void main` method immediately, preventing the program from trying to open a file that does not exist and potentially throwing a `FileNotFoundException`.
+
+**User**
+
+What did the `while ((tempString = reader.readLine()) != null)` part do?
+
+**Codex**
+
+It reads one line at a time, stores it in `tempString`, and continues until `readLine()` returns `null` at the end of the file. The code removes braces, trims the line, and splits it by commas into `data`, but `data` is never used. It prints the original line.
+
+**User**
+
+You can see the data in process.txt. Show me how to take each line and make a process with Process.java.
+
+**Codex**
+
+The file has lines containing `id`, `burstTime`, and `priority`, such as `1 5 4`. Each nonblank line can be trimmed, split with `split("\\s+")`, converted to integers, and passed to the constructor:
+
+    Process process = new Process(id, burstTime, priority);
+    processes.add(process);
+
+This creates an `ArrayList<Process>` containing all processes from the file.
+
+**User**
+
+What does “Cannot make a static reference to the non-static method fcfs(List<Process>) from the type CPUscheduling” mean?
+
+**Codex**
+
+`main` is static, while `fcfs` is an instance method. Create a scheduler object and call the method on it:
+
+    CPUscheduling scheduler = new CPUscheduling();
+    scheduler.fcfs(processes);
+
+**User**
+
+Why didn’t FCFS work?
+
+**Codex**
+
+The comparison used `algoName == "FCFS"`. In Java, `==` compares object references rather than string contents. Use `algoName.equalsIgnoreCase("FCFS")` so the user’s input is compared by text.
+
+**User**
+
+Let’s commit and push for a pull request.
+
+**Codex**
+
+Committed and pushed the branch `separate-process-file`. The commit was `1dbca89`, and GitHub provided a pull-request link. Compiled `.class` files were excluded.
+
+**User**
+
+What do “Create a merge commit,” “Squash and merge,” and “Rebase and merge” mean?
+
+**Codex**
+
+Create a merge commit preserves all branch commits and adds a merge commit. Squash and merge combines the branch commits into one commit on `main`. Rebase and merge replays the individual commits onto `main` without a merge commit. Squash and merge was recommended for this small project.
+
+**User**
+
+Will squash and merge add my changes to the main branch?
+
+**Codex**
+
+Yes. It adds all pull-request changes to `main` as one combined commit while leaving the separate branch available.
+
+**User**
+
+What method should I use if `algoName` is not valid?
+
+**Codex**
+
+Use an `else` after the valid `if`/`else if` checks to print an invalid-choice message. The valid choices were FCFS, SJF, RR, and Priority.
+
+**User**
+
+For priority scheduling, do I just have each process run from highest priority to lowest?
+
+**Codex**
+
+Yes, assuming a lower numeric value means higher priority. For the provided data, priority 1 runs before priority 2, then 3, then 4. A tie can preserve the original file order.
+
+**User**
+
+Let’s update my code to the latest main.
+
+**Codex**
+
+Fetched the latest `origin/main`, temporarily stashed the uncommitted work, merged the updated main branch, and reapplied the changes. A conflict in `CPUscheduling.java` was resolved by preserving the FCFS, SJF, Priority, and RR choices. The merged code compiled successfully. The local changes remain staged and uncommitted.
+
+**User**
+
+What’s wrong with my priority scheduling method?
+
+**Codex**
+
+The method originally only reset the processes. It did not copy and sort the process list, print rounds, advance the clock, or call `recordCompletion`, so the calculated times remained zero.
+
+**User**
+
+You can’t see the new code I wrote?
+
+**Codex**
+
+The saved file was inspected. The new method created an empty list with `new ArrayList<>()`, then sorted and iterated over that empty list. It needs to copy the input list with `new ArrayList<>(processes)` so the processes can actually be sorted and scheduled.
+
+**User**
+
+Is a README file typically a `.txt` file?
+
+**Codex**
+
+Usually a README is named `README.md`, because Markdown supports headings, lists, links, and code blocks. A `.txt` file is possible, but less common.
+
+**User**
+
+Can you create the file without adding anything to it?
+
+**Codex**
+
+Created an empty `README.md` file in the project root.
+
+**User**
+
+Can you add our entire conversation into the genai file separate from the other person’s?
+
+**Codex**
+
+Appended this conversation as a separate `ETHAN HARRIS AI USAGE / CODEX CONVERSATION` section, leaving Johann’s section unchanged.
+
+
+======================================================================
+ETHAN HARRIS AI USAGE / CODEX CONVERSATION CONTINUED
+======================================================================
+
+**User**
+
+You can probably guess what this project is about. Would you change anything?
+
+**Codex**
+
+Reviewed the CPU scheduling project and recommended adding invalid-input handling, validating input lines, reducing repeated average-output code, accepting `List<Process>` in `calcTimes`, documenting priority ties and project assumptions, removing the unused `printResults()` method or finishing it, and avoiding committed `.class` files.
+
+**User**
+
+Are you talking about the repeated clock and completion code in FCFS, SJF, and Priority?
+
+**Codex**
+
+The main repetition discussed was the average-results code in `main`, which appears in every algorithm branch. The clock and completion loop is also repeated in FCFS, SJF, and Priority, but leaving it repeated can be clearer for a small student project.
+
+**User**
+
+In the new helper method, should I instantiate the scheduler and take it out of `main`?
+
+**Codex**
+
+No. Instantiate `CPUscheduling` once in `main`, keep the helper as a non-static method, and call it through the existing scheduler object. The helper can call the non-static `calcTimes` method directly.
+
+**User**
+
+I did that and `calcTimes` is non-static.
+
+**Codex**
+
+That is fine as long as `printResults` is also non-static and is called with `scheduler.printResults(processes)`. A static method cannot directly call a non-static method.
+
+**User**
+
+Take a look at my code and see what’s up.
+
+**Codex**
+
+The issue was that `printResults` was declared `static` while `calcTimes` was non-static. The helper needed to become an instance method. FCFS was also printing the averages twice because it called the helper and then printed the averages again manually. The repeated manual output should be removed, and the helper should be called after each algorithm.
+
+**User**
+
+Okay, it all looks good now.
+
+**Codex**
+
+The scheduler now has separate process modeling, file input, FCFS/SJF/Priority/RR algorithms, timing calculations, and cleaner result reporting.
+
+**User**
+
+Ideally, wouldn’t all the algorithms be in their own file?
+
+**Codex**
+
+Yes. A larger project could use separate files such as `FCFS.java`, `SJF.java`, `PriorityScheduling.java`, and `RoundRobin.java`, with `CPUscheduling.java` handling input and algorithm selection. Keeping them together is still reasonable for a small class project.
+
+**User**
+
+Add everything discussed since the previous conversation was added to `genai.txt`, and add a short README.
+
+**Codex**
+
+Added this continuation section to `genai.txt` and created a concise project README.
+
