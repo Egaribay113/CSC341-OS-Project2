@@ -17,6 +17,7 @@ public class CPUscheduling {
 
         if (!inputFile.exists() || !inputFile.isFile()) {
             System.out.println("File not found: " + fileName);
+            scanner.close();
             return;
         }
         System.out.println("====== " + fileName + " ======");
@@ -47,27 +48,39 @@ public class CPUscheduling {
             System.out.println(process);
         }
 
-        System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
+        System.out.println("\nPlease choose between FCFS, SJF, Priority, and RR.");
         String algoName = scanner.nextLine().trim();
 
         if (algoName.equalsIgnoreCase("FCFS")) {
             scheduler.fcfs(processes);
-            float[] averages = scheduler.calcTimes(processes);
-            System.out.println("Average turnaround time : " + averages[0]);
-            System.out.println("Average waiting time : " + averages[1]);
-        }
+            scheduler.printResults(processes);
 
-        if (algoName.equalsIgnoreCase("RR")) {
+        } else if (algoName.equalsIgnoreCase("SJF")) {
+            scheduler.sjf(processes);
+            scheduler.printResults(processes);
+
+
+        } else if (algoName.equalsIgnoreCase("Priority")) {
+            scheduler.priorityScheduling(processes);
+            scheduler.printResults(processes);
+
+        } else if (algoName.equalsIgnoreCase("RR")) {
             scheduler.roundRobin(processes);
-            float[] averages = scheduler.calcTimes(processes);
-            System.out.println("Average turnaround time : " + averages[0]);
-            System.out.println("Average waiting time : " + averages[1]);
+            scheduler.printResults(processes);
+
+        }else{
+            System.out.println("Invalid Input. Program closing...");
         }
         scanner.close();
-
     }
 
-    public float[] calcTimes(ArrayList<Process> P) {
+    private  void printResults(ArrayList<Process> processes) {
+            float[] averages = calcTimes(processes);
+            System.out.println("Average waiting time: " + averages[1]);
+            System.out.println("Average turnaround time: " + averages[0]);
+    }
+
+    public  float[] calcTimes(List<Process> P) {
         //since no arrival times were given in the project description, assumes all processes arrived at t=0
         float turnaroundT = 0;
         float waitingT = 0;
@@ -107,7 +120,7 @@ public class CPUscheduling {
         List<Process> temporary = new ArrayList<>(processes);
         temporary.sort(Comparator.comparingInt(Process::getBurstTime));
         for (int i = 0; i < temporary.size(); i++) {
-            System.out.println("Round " + (i + 1) + ": ");
+            System.out.println("\nRound " + (i + 1) + ": ");
             System.out.println(temporary.get(i));
         }
         int clock = 0;
@@ -117,8 +130,25 @@ public class CPUscheduling {
         }
     }
 
-    public void priorityScheduling() {
-
+    public void priorityScheduling(List<Process> processes) {
+        // Reset for algorithm
+        for (Process p : processes) {
+            p.resetForScheduling();
+        }
+        // Create a new list so the original order is preserved
+        List<Process> tempProcesses = new ArrayList<>(processes);
+        tempProcesses.sort(Comparator.comparingInt(Process::getPriority));
+        // Print the execution order
+        for (int i = 0; i < tempProcesses.size(); i++) {
+            System.out.println("\nRound " + (i + 1) + ": ");
+            System.out.println(tempProcesses.get(i));
+        }
+        // Generating waitTime and turnaroundTime
+        int clock = 0;
+        for (Process p : tempProcesses) {
+            clock += p.getRemainingTime();
+            p.recordCompletion(clock);
+        }
     }
 
     public void roundRobin(List<Process> processes) {
@@ -138,7 +168,7 @@ public class CPUscheduling {
                     continue;
                 }
                 round++;
-                System.out.println("Round " + round + ": ");
+                System.out.println("\nRound " + round + ": ");
                 System.out.println(p);
                 int slice = Math.min(timeQuantum, p.getRemainingTime());
                 clock += slice;
@@ -151,7 +181,4 @@ public class CPUscheduling {
         }
     }
 
-    public void printResults() {
-        System.out.println("Average waiting time: ");
-    }
 }
