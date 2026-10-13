@@ -2,35 +2,33 @@
 import java.io.*;
 import java.util.*;
 
-
 public class CPUscheduling {
 
     public static void main(String[] args) throws IOException {
-     
-     CPUscheduling scheduler = new CPUscheduling(); 
-     
+
+        CPUscheduling scheduler = new CPUscheduling();
+
         Scanner scanner = new Scanner(System.in);
-      
-      System.out.print("Enter the process file name: ");
-      String fileName = scanner.nextLine().trim();   
-      
-      File inputFile = new File(fileName);
-      
-      if(!inputFile.exists() || !inputFile.isFile()){
-        System.out.println("File not found: " + fileName);
-        return; 
-      }
-       System.out.println("====== " + fileName + " ======");
+
+        System.out.print("Enter the process file name: ");
+        String fileName = scanner.nextLine().trim();
+
+        File inputFile = new File(fileName);
+
+        if (!inputFile.exists() || !inputFile.isFile()) {
+            System.out.println("File not found: " + fileName);
+            return;
+        }
+        System.out.println("====== " + fileName + " ======");
 
         ArrayList<Process> processes = new ArrayList<>();
 
-       try(BufferedReader reader = new BufferedReader( new FileReader(inputFile))){
-        String line; 
-        
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
+            String line;
 
-            while((line = reader.readLine()) != null ){
+            while ((line = reader.readLine()) != null) {
                 line = line.trim();
-                if(line.isEmpty()){
+                if (line.isEmpty()) {
                     continue;
                 }
 
@@ -40,28 +38,34 @@ public class CPUscheduling {
                 int burstTime = Integer.parseInt(data[1]);
                 int priority = Integer.parseInt(data[2]);
 
-                Process process = new Process(id , burstTime , priority);
+                Process process = new Process(id, burstTime, priority);
                 processes.add(process);
             }
-       }
-    
-       for(Process process : processes){
-            System.out.println(process);
-       }
-        
-       System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
-        String algoName = scanner.nextLine().trim();   
+        }
 
-        if( algoName.equalsIgnoreCase("FCFS")) { 
+        for (Process process : processes) {
+            System.out.println(process);
+        }
+
+        System.out.println("Please choose between FCFS, SJF, Priority, and RR.");
+        String algoName = scanner.nextLine().trim();
+
+        if (algoName.equalsIgnoreCase("FCFS")) {
             scheduler.fcfs(processes);
             float[] averages = scheduler.calcTimes(processes);
             System.out.println("Average turnaround time : " + averages[0]);
             System.out.println("Average waiting time : " + averages[1]);
         }
-      
+
+        if (algoName.equalsIgnoreCase("RR")) {
+            scheduler.roundRobin(processes);
+            float[] averages = scheduler.calcTimes(processes);
+            System.out.println("Average turnaround time : " + averages[0]);
+            System.out.println("Average waiting time : " + averages[1]);
+        }
+        scanner.close();
 
     }
-
 
     public float[] calcTimes(ArrayList<Process> P) {
         //since no arrival times were given in the project description, assumes all processes arrived at t=0
@@ -73,7 +77,7 @@ public class CPUscheduling {
             waitingT += p.getWaitingTime();
         }
         //take the averages
-        if (P.size() > 0) {
+        if (!P.isEmpty()) {
             return new float[]{turnaroundT / P.size(), waitingT / P.size()};
         } else {
             return new float[]{0, 0};
@@ -148,7 +152,6 @@ public class CPUscheduling {
     }
 
     public void printResults() {
-
         System.out.println("Average waiting time: ");
     }
 }
