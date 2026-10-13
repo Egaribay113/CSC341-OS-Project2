@@ -10,7 +10,9 @@
 
 ## Johann Jaramillo
 
-- Refactored the `Process` class into its own file.
+- Designed the chassis for the `Process` class.
 - Added process timing fields and scheduling-state methods.
-- Improved FCFS and Round Robin scheduling behavior.
-- Helped document AI-assisted development and scheduling decisions.
+- Prototyped and improved FCFS and Round Robin scheduling behavior, set foundation for SJF and provided template for Priority.
+- Documented AI-assisted development and scheduling decisions.
+
+## Eric Garibay
